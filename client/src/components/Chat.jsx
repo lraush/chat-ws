@@ -21,7 +21,6 @@ const Chat = () => {
   const [message, setMessage] = useState("");
   const [messages, setMessages] = useState([]);
   const [error, setError] = useState("");
-  const [joined, setJoined] = useState(false);
   const [connecting, setConnecting] = useState(true);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [soundEnabled, setSoundEnabled] = useState(() => isMessageSoundEnabled());
@@ -37,11 +36,9 @@ const Chat = () => {
     try {
       const response = await emitJoin(socket, { name: userName, room: roomId });
       setMessages(response?.messages ?? []);
-      setJoined(true);
       joinedRef.current = true;
       return true;
     } catch (err) {
-      setJoined(false);
       joinedRef.current = false;
       setError(err?.message || "Could not join room");
       return false;
@@ -73,7 +70,6 @@ const Chat = () => {
 
     const onReconnect = () => {
       joinedRef.current = false;
-      setJoined(false);
       performJoin();
     };
 
@@ -130,7 +126,6 @@ const Chat = () => {
       if (response?.error) {
         if (response.error === "join a room first") {
           joinedRef.current = false;
-          setJoined(false);
         }
         setError(response.error);
         return;
