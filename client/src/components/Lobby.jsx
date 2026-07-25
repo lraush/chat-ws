@@ -1,0 +1,190 @@
+import { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import styles from "../styles/Main.module.css";
+import { createRoom, fetchRoom } from "../utils/api";
+import { clearUserName, getUserName } from "../utils/auth";
+import { buildInviteUrl, parseRoomIdFromInvite } from "../utils/room";
+
+const Lobby = () => {
+  const navigate = useNavigate();
+  const userName = getUserName();
+
+  const [linkInput, setLinkInput] = useState("");
+  const [creating, setCreating] = useState(false);
+  const [joining, setJoining] = useState(false);
+  const [error, setError] = useState("");
+  const [pendingRoomId, setPendingRoomId] = useState(null);
+  const [inviteUrl, setInviteUrl] = useState("");
+  const [copied, setCopied] = useState(false);
+
+  if (!userName) {
+    return (
+      <div className={styles.wrap}>
+        <div className={`${styles.container} ${styles.centered}`}>
+          <p className={styles.hint}>Please sign in first.</p>
+          <Link to="/" className={styles.linkButton}>
+            Sign in
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  const handleCreateRoom = async () => {
+    if (creating) return;
+    setCreating(true);
+    setError("");
+    setPendingRoomId(null);
+    setInviteUrl("");
+
+    try {
+      const { id } = await createRoom();
+      setPendingRoomId(id);
+      setInviteUrl(buildInviteUrl(id));
+    } catch (err) {
+      setError(
+        err?.message === "network"
+          ? "Cannot reach the server."
+          : "Could not create room.",
+      );
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  const handleEnterCreatedRoom = () => {
+    if (!pendingRoomId) return;
+    navigate(`/chat/${pendingRoomId}`);
+  };
+
+  const handleCopyInvite = async () => {
+    if (!inviteUrl) return;
+    try {
+      await navigator.clipboard.writeText(inviteUrl);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      setError("Could not copy link");
+    }
+  };
+
+  const handleJoinByLink = async (e) => {
+    e.preventDefault();
+    if (joining) return;
+
+    const roomId = parseRoomIdFromInvite(linkInput);
+    if (!roomId) {
+      setError("Paste a valid invite link or room id.");
+      return;
+    }
+
+    setJoining(true);
+    setError("");
+
+    try {
+      const room = await fetchRoom(roomId);
+      if (!room) {
+        setError("Room not found. Check the link.");
+        return;
+      }
+      navigate(`/chat/${roomId}`);
+    } catch (err) {
+      setError(
+        err?.message === "network"
+          ? "Cannot reach the server."
+          : "Could not join room.",
+      );
+    } finally {
+      setJoining(false);
+    }
+  };
+
+  const handleSignOut = () => {
+    clearUserName();
+    navigate("/", { replace: true });
+  };
+
+  return (
+    <div className={styles.wrap}>
+      <div className={`${styles.container} ${styles.centered}`}>
+        <h1 className={styles.heading}>Hello, {userName}</h1>
+        <p className={styles.hint}>Create a new room or join with an invite link.</p>
+
+        {error ? <p className={styles.error}>{error}</p> : null}
+
+        <div className={styles.lobbyActions}>
+          <section className={styles.lobbyCard}>
+            <h2 className={styles.lobbyTitle}>Create room</h2>
+            <p className={styles.lobbyText}>
+              Start a new chat and send the invite link to friends.
+            </p>
+            <button
+              type="button"
+              className={styles.button}
+              disabled={creating}
+              onClick={handleCreateRoom}
+            >
+              {creating ? "Creating…" : "Create room"}
+            </button>
+
+            {inviteUrl ? (
+              <div className={styles.inviteBlock}>
+                <p className={styles.lobbyText}>Invite link (share before you enter):</p>
+                <div className={styles.share}>
+                  <input
+                    className={styles.shareInput}
+                    readOnly
+                    value={inviteUrl}
+                    aria-label="Invite link"
+                  />
+                  <button
+                    type="button"
+                    className={styles.shareButton}
+                    onClick={handleCopyInvite}
+                  >
+                    {copied ? "Copied" : "Copy"}
+                  </button>
+                </div>
+                <button
+                  type="button"
+                  className={styles.button}
+                  onClick={handleEnterCreatedRoom}
+                >
+                  Enter chat
+                </button>
+              </div>
+            ) : null}
+          </section>
+
+          <section className={styles.lobbyCard}>
+            <h2 className={styles.lobbyTitle}>Join by link</h2>
+            <p className={styles.lobbyText}>
+              Paste the invite link you received.
+            </p>
+            <form className={styles.form} onSubmit={handleJoinByLink}>
+              <input
+                className={styles.input}
+                value={linkInput}
+                placeholder="https://…/join/… or room id"
+                onChange={(e) => setLinkInput(e.target.value)}
+              />
+              <button
+                type="submit"
+                className={styles.button}
+                disabled={joining}
+              >
+                {joining ? "Checking…" : "Join room"}
+              </button>
+            </form>
+          </section>
+        </div>
+
+        <button type="button" className={styles.textButton} onClick={handleSignOut}>
+          Sign out ({userName})
+        </button>
+      </div>
+    </div>
+  );
+};
+
+export default Lobby;
