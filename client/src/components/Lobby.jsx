@@ -2,8 +2,21 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import styles from "../styles/Main.module.css";
 import { createRoom, fetchRoom } from "../utils/api";
-import { clearUserName, getUserName } from "../utils/auth";
+import {
+  getUserName,
+  isAuthenticated,
+} from "../utils/auth";
+import { getBackendConfigMessage, isBackendConfigured } from "../utils/backend";
 import { buildInviteUrl, parseRoomIdFromInvite } from "../utils/room";
+import { clearRoomCipherRotations } from "../utils/roomCipher";
+import LobbyMenu from "./LobbyMenu";
+
+function lobbyErrorMessage(err, fallback) {
+  if (err?.message === "config") return getBackendConfigMessage();
+  if (err?.message === "network") return "Cannot reach the server.";
+  if (err?.message === "unauthorized") return "Session expired. Sign in again.";
+  return fallback;
+}
 
 const Lobby = () => {
   const navigate = useNavigate();
@@ -17,7 +30,7 @@ const Lobby = () => {
   const [inviteUrl, setInviteUrl] = useState("");
   const [copied, setCopied] = useState(false);
 
-  if (!userName) {
+  if (!isAuthenticated()) {
     return (
       <div className={styles.wrap}>
         <div className={`${styles.container} ${styles.centered}`}>
@@ -32,6 +45,10 @@ const Lobby = () => {
 
   const handleCreateRoom = async () => {
     if (creating) return;
+    if (!isBackendConfigured()) {
+      setError(getBackendConfigMessage());
+      return;
+    }
     setCreating(true);
     setError("");
     setPendingRoomId(null);
@@ -42,11 +59,7 @@ const Lobby = () => {
       setPendingRoomId(id);
       setInviteUrl(buildInviteUrl(id));
     } catch (err) {
-      setError(
-        err?.message === "network"
-          ? "Cannot reach the server."
-          : "Could not create room.",
-      );
+      setError(lobbyErrorMessage(err, "Could not create room."));
     } finally {
       setCreating(false);
     }
@@ -54,7 +67,8 @@ const Lobby = () => {
 
   const handleEnterCreatedRoom = () => {
     if (!pendingRoomId) return;
-    navigate(`/chat/${pendingRoomId}`);
+    clearRoomCipherRotations(pendingRoomId);
+    navigate(`/unlock/${pendingRoomId}`);
   };
 
   const handleCopyInvite = async () => {
@@ -78,6 +92,11 @@ const Lobby = () => {
       return;
     }
 
+    if (!isBackendConfigured()) {
+      setError(getBackendConfigMessage());
+      return;
+    }
+
     setJoining(true);
     setError("");
 
@@ -87,25 +106,20 @@ const Lobby = () => {
         setError("Room not found. Check the link.");
         return;
       }
-      navigate(`/chat/${roomId}`);
+      clearRoomCipherRotations(roomId);
+      navigate(`/unlock/${roomId}`);
     } catch (err) {
-      setError(
-        err?.message === "network"
-          ? "Cannot reach the server."
-          : "Could not join room.",
-      );
+      setError(lobbyErrorMessage(err, "Could not join room."));
     } finally {
       setJoining(false);
     }
   };
 
-  const handleSignOut = () => {
-    clearUserName();
-    navigate("/", { replace: true });
-  };
-
   return (
     <div className={styles.wrap}>
+      <header className={styles.lobbyHeader}>
+        <LobbyMenu />
+      </header>
       <div className={`${styles.container} ${styles.centered}`}>
         <h1 className={styles.heading}>Hello, {userName}</h1>
         <p className={styles.hint}>Create a new room or join with an invite link.</p>
@@ -178,10 +192,6 @@ const Lobby = () => {
             </form>
           </section>
         </div>
-
-        <button type="button" className={styles.textButton} onClick={handleSignOut}>
-          Sign out ({userName})
-        </button>
       </div>
     </div>
   );

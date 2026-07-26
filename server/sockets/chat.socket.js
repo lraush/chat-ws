@@ -2,12 +2,18 @@ const { createMessage, getMessages } = require("../services/message.services");
 const prisma = require("../db/prisma");
 
 function chatSocket(io, socket) {
-  console.log("user connected: ", socket.id);
+  console.log("user connected: ", socket.id, socket.user?.email);
 
-  socket.on("join", async ({ name, room }, ack) => {
+  socket.on("join", async ({ room }, ack) => {
     try {
-      if (!name?.trim() || !room?.trim()) {
-        ack?.({ error: "name and room are required" });
+      const user = socket.user;
+      if (!user?.id) {
+        ack?.({ error: "unauthorized" });
+        return;
+      }
+
+      if (!room?.trim()) {
+        ack?.({ error: "room is required" });
         return;
       }
 
@@ -21,28 +27,17 @@ function chatSocket(io, socket) {
         return;
       }
 
-      let user = await prisma.user.findUnique({
-        where: { name: name.trim() },
-      });
-
-      if (!user) {
-        user = await prisma.user.create({
-          data: { name: name.trim() },
-        });
-      }
-
       for (const joinedRoom of socket.rooms) {
         if (joinedRoom !== socket.id) {
           socket.leave(joinedRoom);
         }
       }
 
-      socket.user = user;
       socket.room = roomId;
       socket.join(socket.room);
 
       const messages = await getMessages(socket.room);
-      ack?.({ user, messages });
+      ack?.({ user: { id: user.id, name: user.name, email: user.email }, messages });
     } catch (err) {
       console.error("join error:", err);
       ack?.({ error: "failed to join room" });
@@ -65,7 +60,8 @@ function chatSocket(io, socket) {
 
   socket.on("sendMessage", async (data, ack) => {
     try {
-      if (!socket.user || !socket.room) {
+      const user = socket.user;
+      if (!user?.id || !socket.room) {
         ack?.({ error: "join a room first" });
         return;
       }
@@ -78,7 +74,7 @@ function chatSocket(io, socket) {
 
       const message = await createMessage({
         content,
-        userId: socket.user.id,
+        userId: user.id,
         room: socket.room,
       });
 

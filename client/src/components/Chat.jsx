@@ -1,9 +1,13 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import EmojiPicker, { Theme } from "emoji-picker-react";
 import styles from "../styles/Main.module.css";
-import { appendMessage, emitJoin, socket } from "../utils/socket";
-import { getUserName } from "../utils/auth";
+import { getBackendConfigMessage } from "../utils/backend";
+import { decryptMessage, encryptMessage } from "../utils/cipher";
+import { getUserName, isAuthenticated } from "../utils/auth";
+import {
+  getRoomCipherRotations,
+  hasRoomCipherConfigured,
+} from "../utils/roomCipher";
 import { normalizeRoomId } from "../utils/room";
 import {
   isMessageSoundEnabled,
@@ -12,11 +16,14 @@ import {
   setMessageSoundEnabled,
 } from "../utils/messageSound";
 
+const ChatEmojiPicker = lazy(() => import("./ChatEmojiPicker"));
+
 const Chat = () => {
   const navigate = useNavigate();
   const { roomId: rawRoomId } = useParams();
   const roomId = normalizeRoomId(rawRoomId);
   const [userName] = useState(() => getUserName());
+  const [cipherRotations] = useState(() => getRoomCipherRotations(roomId));
 
   const [message, setMessage] = useState("");
   const [messages, setMessages] = useState([]);
@@ -26,29 +33,46 @@ const Chat = () => {
   const [soundEnabled, setSoundEnabled] = useState(() => isMessageSoundEnabled());
   const joinedRef = useRef(false);
   const composeRef = useRef(null);
+  const socketRef = useRef(null);
+  const socketApiRef = useRef(null);
+
+  const loadSocketApi = useCallback(async () => {
+    if (socketApiRef.current) return socketApiRef.current;
+    const mod = await import("../utils/socket");
+    socketApiRef.current = mod;
+    socketRef.current = mod.getSocket();
+    return mod;
+  }, []);
 
   const performJoin = useCallback(async () => {
-    if (!userName || !roomId) return false;
+    if (!roomId) return false;
 
     setConnecting(true);
     setError("");
 
     try {
-      const response = await emitJoin(socket, { name: userName, room: roomId });
+      const mod = await loadSocketApi();
+      const sock = mod.getSocket();
+      socketRef.current = sock;
+      const response = await mod.emitJoin(sock, { room: roomId });
       setMessages(response?.messages ?? []);
       joinedRef.current = true;
       return true;
     } catch (err) {
       joinedRef.current = false;
-      setError(err?.message || "Could not join room");
+      if (err?.message === "config") {
+        setError(getBackendConfigMessage());
+      } else {
+        setError(err?.message || "Could not join room");
+      }
       return false;
     } finally {
       setConnecting(false);
     }
-  }, [userName, roomId]);
+  }, [roomId, loadSocketApi]);
 
   useEffect(() => {
-    if (!userName) {
+    if (!isAuthenticated()) {
       navigate("/", { replace: true });
       return;
     }
@@ -58,28 +82,61 @@ const Chat = () => {
       return;
     }
 
-    const onNewMessage = (newMessage) => {
-      setMessages((prev) => appendMessage(prev, newMessage));
-      if (newMessage?.user?.name && newMessage.user.name !== userName) {
-        playIncomingMessageSound();
+    if (!hasRoomCipherConfigured(roomId)) {
+      navigate(`/unlock/${roomId}`, { replace: true });
+    }
+  }, [userName, roomId, navigate]);
+
+  useEffect(() => {
+    if (!roomId || !isAuthenticated() || !hasRoomCipherConfigured(roomId)) {
+      return;
+    }
+
+    let cancelled = false;
+    let sock = null;
+    let onNewMessage = null;
+    let onReconnect = null;
+
+    loadSocketApi().then((mod) => {
+      if (cancelled) return;
+
+      sock = mod.getSocket();
+      socketRef.current = sock;
+
+      if (!sock) {
+        setError(getBackendConfigMessage());
+        setConnecting(false);
+        return;
       }
-    };
 
-    socket.on("message:new", onNewMessage);
-    performJoin();
+      onNewMessage = (newMessage) => {
+        setMessages((prev) => mod.appendMessage(prev, newMessage));
+        if (newMessage?.user?.name && newMessage.user.name !== userName) {
+          playIncomingMessageSound();
+        }
+      };
 
-    const onReconnect = () => {
-      joinedRef.current = false;
+      sock.on("message:new", onNewMessage);
       performJoin();
-    };
 
-    socket.io.on("reconnect", onReconnect);
+      onReconnect = () => {
+        joinedRef.current = false;
+        performJoin();
+      };
+
+      sock.io.on("reconnect", onReconnect);
+    });
 
     return () => {
-      socket.off("message:new", onNewMessage);
-      socket.io.off("reconnect", onReconnect);
+      cancelled = true;
+      if (sock && onNewMessage) {
+        sock.off("message:new", onNewMessage);
+      }
+      if (sock?.io && onReconnect) {
+        sock.io.off("reconnect", onReconnect);
+      }
     };
-  }, [userName, roomId, navigate, performJoin]);
+  }, [userName, roomId, navigate, performJoin, loadSocketApi]);
 
   useEffect(() => {
     const prime = () => primeMessageSound();
@@ -113,12 +170,20 @@ const Chat = () => {
     const text = message.trim();
     if (!text) return;
 
+    const rotations = getRoomCipherRotations(roomId) ?? 0;
+    const outbound = encryptMessage(text, rotations);
+
     if (!joinedRef.current) {
       const ok = await performJoin();
       if (!ok) return;
     }
 
-    socket.timeout(10000).emit("sendMessage", { content: text }, (err, response) => {
+    if (!socketRef.current) {
+      setError(getBackendConfigMessage());
+      return;
+    }
+
+    socketRef.current.timeout(10000).emit("sendMessage", { content: outbound }, (err, response) => {
       if (err) {
         setError("Message not sent (timeout)");
         return;
@@ -131,7 +196,11 @@ const Chat = () => {
         return;
       }
       if (response?.message) {
-        setMessages((prev) => appendMessage(prev, response.message));
+        setMessages((prev) => {
+          const mod = socketApiRef.current;
+          if (mod) return mod.appendMessage(prev, response.message);
+          return [...prev, response.message];
+        });
       }
       setError("");
     });
@@ -155,6 +224,14 @@ const Chat = () => {
         <div className={styles.chatHeader}>
           <h2 className={styles.heading}>{userName}</h2>
           <div className={styles.chatHeaderActions}>
+            <Link
+              to={`/unlock/${roomId}`}
+              className={styles.cipherBadge}
+              title="Сменить любимое число"
+              aria-label="Сменить любимое число"
+            >
+              {cipherRotations && cipherRotations > 0 ? "🔐" : "🔓"}
+            </Link>
             <button
               type="button"
               className={styles.soundToggle}
@@ -201,7 +278,7 @@ const Chat = () => {
                         {mess.user?.name ?? "Unknown"}
                       </strong>
                     ) : null}
-                    <p>{mess.content}</p>
+                    <p>{decryptMessage(mess.content, cipherRotations ?? 0)}</p>
                   </div>
                 </div>
               );
@@ -212,21 +289,9 @@ const Chat = () => {
         <div className={styles.compose} ref={composeRef}>
           {showEmojiPicker ? (
             <div className={styles.emojiPickerWrap}>
-              <EmojiPicker
-                theme={Theme.DARK}
-                width="100%"
-                height={220}
-                searchPlaceholder="Search…"
-                previewConfig={{ showPreview: false }}
-                onEmojiClick={handleEmojiClick}
-                style={{
-                  "--epr-emoji-size": "22px",
-                  "--epr-emoji-padding": "3px",
-                  "--epr-horizontal-padding": "6px",
-                  "--epr-header-padding": "6px 8px",
-                  "--epr-category-label-height": "24px",
-                }}
-              />
+              <Suspense fallback={<p className={styles.hint}>Loading emoji…</p>}>
+                <ChatEmojiPicker onEmojiClick={handleEmojiClick} />
+              </Suspense>
             </div>
           ) : null}
 

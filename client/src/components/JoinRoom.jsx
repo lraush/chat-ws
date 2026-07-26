@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import styles from "../styles/Main.module.css";
 import { fetchRoom } from "../utils/api";
-import { getUserName } from "../utils/auth";
+import { isAuthenticated } from "../utils/auth";
 import { normalizeRoomId } from "../utils/room";
 
 const JoinRoom = () => {
@@ -28,9 +28,9 @@ const JoinRoom = () => {
           return;
         }
 
-        const name = getUserName();
+        const name = isAuthenticated();
         if (name) {
-          navigate(`/chat/${roomId}`, { replace: true });
+          navigate(`/unlock/${roomId}`, { replace: true });
           return;
         }
 

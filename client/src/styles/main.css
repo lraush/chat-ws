@@ -62,3 +62,13 @@ li {
   min-height: 100vh;
   min-height: 100dvh;
 }
+
+.routeFallback {
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgb(255, 255, 255);
+  font-size: 15px;
+}

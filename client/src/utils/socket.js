@@ -1,29 +1,52 @@
 import io from "socket.io-client";
 import { getBackendUrl } from "./backend";
+import { getAuthToken } from "./auth";
 
 const transports = ["websocket", "polling"];
 
-export const socket = io(getBackendUrl(), {
-  transports,
-  autoConnect: true,
-});
+let socketInstance = null;
+let socketToken = null;
 
-export function joinChat(sock, { name, room }, onResult) {
-  emitJoin(sock, { name, room })
-    .then((response) => onResult?.(response))
-    .catch((err) => {
-      onResult?.({
-        error: err?.message === "not connected" ? "no connection" : err?.message,
-      });
-    });
+export function disconnectSocket() {
+  if (socketInstance) {
+    socketInstance.disconnect();
+    socketInstance = null;
+    socketToken = null;
+  }
 }
 
-export function emitJoin(sock, { name, room }) {
-  const payload = { name: String(name).trim(), room: String(room).trim() };
+export function getSocket() {
+  const backendUrl = getBackendUrl();
+  const token = getAuthToken();
+  if (!backendUrl || !token) return null;
+
+  if (socketInstance && socketToken !== token) {
+    disconnectSocket();
+  }
+
+  if (!socketInstance) {
+    socketToken = token;
+    socketInstance = io(backendUrl, {
+      transports,
+      autoConnect: true,
+      auth: { token },
+    });
+  }
+
+  return socketInstance;
+}
+
+export function emitJoin(sock, { room }) {
+  const payload = { room: String(room).trim() };
 
   return new Promise((resolve, reject) => {
-    if (!payload.name || !payload.room) {
-      reject(new Error("name and room are required"));
+    if (!sock) {
+      reject(new Error("config"));
+      return;
+    }
+
+    if (!payload.room) {
+      reject(new Error("room is required"));
       return;
     }
 
