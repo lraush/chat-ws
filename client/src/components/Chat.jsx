@@ -15,6 +15,7 @@ import {
   primeMessageSound,
   setMessageSoundEnabled,
 } from "../utils/messageSound";
+import LobbyMenu from "./LobbyMenu";
 
 const ChatEmojiPicker = lazy(() => import("./ChatEmojiPicker"));
 
@@ -220,6 +221,9 @@ const Chat = () => {
 
   return (
     <div className={styles.wrap}>
+      <header className={styles.lobbyHeader}>
+        <LobbyMenu />
+      </header>
       <div className={`${styles.container} ${styles.chatLayout}`}>
         <div className={styles.chatHeader}>
           <h2 className={styles.heading}>{userName}</h2>
@@ -242,9 +246,6 @@ const Chat = () => {
             >
               {soundEnabled ? "🔔" : "🔕"}
             </button>
-            <Link to="/lobby" className={styles.textButton}>
-              Leave
-            </Link>
           </div>
         </div>
 

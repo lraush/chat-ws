@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import styles from "../styles/Main.module.css";
 import { getBackendConfigMessage, isBackendConfigured } from "../utils/backend";
 import { saveRoomSecretNumber } from "../utils/api";
+import LobbyMenu from "./LobbyMenu";
 import { normalizeRotations } from "../utils/cipher";
 import { getUserName, isAuthenticated } from "../utils/auth";
 import { clearRoomCipherRotations, setRoomCipherRotations } from "../utils/roomCipher";
@@ -39,11 +40,11 @@ const RoomUnlock = () => {
   if (!roomId) {
     return (
       <div className={styles.wrap}>
+        <header className={styles.lobbyHeader}>
+          <LobbyMenu />
+        </header>
         <div className={`${styles.container} ${styles.centered}`}>
           <p className={styles.error}>Invalid room.</p>
-          <Link to="/lobby" className={styles.linkButton}>
-            Back to lobby
-          </Link>
         </div>
       </div>
     );
@@ -80,7 +81,10 @@ const RoomUnlock = () => {
 
   return (
     <div className={styles.wrap}>
-      <div className={`${styles.container} ${styles.centered} ${styles.flatCorners}`}>
+      <header className={styles.lobbyHeader}>
+        <LobbyMenu />
+      </header>
+      <div className={`${styles.container} ${styles.centered} ${styles.flatCorners} ${styles.profilePage}`}>
         <h1 className={styles.heading}>Secret chat</h1>
         <p className={styles.hint}>
           Signed in as {getUserName()}.
@@ -113,10 +117,6 @@ const RoomUnlock = () => {
             {saving ? "Saving…" : "Enter chat"}
           </button>
         </form>
-
-        <Link to="/lobby" className={styles.textButton}>
-          Cancel
-        </Link>
       </div>
     </div>
   );

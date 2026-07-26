@@ -1,5 +1,5 @@
 import { getBackendUrl, isBackendConfigured } from "./backend";
-import { clearAuthSession, getAuthToken, setAuthSession } from "./auth";
+import { clearAuthSession, getAuthToken, setAuthSession, updateAuthUser } from "./auth";
 
 function apiBase() {
   const base = getBackendUrl();
@@ -106,12 +106,12 @@ export async function saveRoomSecretNumber(roomId, secretNumber) {
   return res.json();
 }
 
-export async function adminCreateUser({ email, password, name }) {
+export async function adminCreateUser({ email, password, name, isAdmin }) {
   let res;
   try {
     res = await authFetch("/api/admin/users", {
       method: "POST",
-      body: JSON.stringify({ email, password, name }),
+      body: JSON.stringify({ email, password, name, isAdmin: Boolean(isAdmin) }),
     });
   } catch (err) {
     if (err?.message === "unauthorized") throw err;
@@ -120,11 +120,83 @@ export async function adminCreateUser({ email, password, name }) {
   if (res.status === 403) {
     throw new Error("forbidden");
   }
+  if (res.status === 400) {
+    const body = await res.json().catch(() => ({}));
+    if (body.error === "invalid_name") {
+      throw new Error("invalid_name");
+    }
+    throw new Error("invalid_request");
+  }
   if (res.status === 409) {
-    throw new Error("email_taken");
+    const body = await res.json().catch(() => ({}));
+    if (body.error === "email_taken") {
+      throw new Error("email_taken");
+    }
+    if (body.error === "name_taken") {
+      throw new Error("name_taken");
+    }
+    throw new Error("conflict");
   }
   if (!res.ok) {
     throw new Error("failed_to_create_user");
+  }
+  return res.json();
+}
+
+export async function updateProfileName(name) {
+  let res;
+  try {
+    res = await authFetch("/api/auth/profile", {
+      method: "PATCH",
+      body: JSON.stringify({ name }),
+    });
+  } catch (err) {
+    if (err?.message === "unauthorized") throw err;
+    throw new Error("network");
+  }
+  if (res.status === 400) {
+    const body = await res.json().catch(() => ({}));
+    if (body.error === "invalid_name") {
+      throw new Error("invalid_name");
+    }
+    throw new Error("invalid_request");
+  }
+  if (res.status === 409) {
+    throw new Error("name_taken");
+  }
+  if (!res.ok) {
+    throw new Error("update_failed");
+  }
+  const data = await res.json();
+  if (data.user) {
+    updateAuthUser(data.user);
+  }
+  return data;
+}
+
+export async function updateProfilePassword(currentPassword, newPassword) {
+  let res;
+  try {
+    res = await authFetch("/api/auth/password", {
+      method: "PATCH",
+      body: JSON.stringify({ currentPassword, newPassword }),
+    });
+  } catch (err) {
+    if (err?.message === "unauthorized") throw err;
+    throw new Error("network");
+  }
+  if (res.status === 400) {
+    const body = await res.json().catch(() => ({}));
+    if (body.error === "weak_password") {
+      throw new Error("weak_password");
+    }
+    if (body.error === "invalid_current_password") {
+      throw new Error("invalid_current_password");
+    }
+    throw new Error("invalid_request");
+  }
+  if (!res.ok) {
+    throw new Error("update_failed");
   }
   return res.json();
 }

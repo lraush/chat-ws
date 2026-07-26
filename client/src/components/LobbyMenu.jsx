@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import styles from "../styles/Main.module.css";
 import {
   clearAuthSession,
@@ -10,8 +10,10 @@ import { disconnectSocket } from "../utils/socket";
 
 const LobbyMenu = () => {
   const navigate = useNavigate();
+  const { pathname } = useLocation();
   const [open, setOpen] = useState(false);
   const rootRef = useRef(null);
+  const onLobby = pathname === "/lobby";
 
   useEffect(() => {
     if (!open) return;
@@ -62,6 +64,16 @@ const LobbyMenu = () => {
         <div className={styles.burgerPanel} role="menu">
           {user?.name ? (
             <p className={styles.burgerMeta}>{user.name}</p>
+          ) : null}
+          {!onLobby ? (
+            <Link
+              to="/lobby"
+              className={styles.burgerItem}
+              role="menuitem"
+              onClick={() => setOpen(false)}
+            >
+              Lobby
+            </Link>
           ) : null}
           <Link
             to="/profile"

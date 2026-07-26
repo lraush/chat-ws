@@ -594,6 +594,102 @@
   overflow-wrap: anywhere;
 }
 
+.profileNameValue {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+}
+
+.profileNameValue .profileValue {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.profileIconButton {
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: 8px;
+  background: rgb(48, 43, 43);
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+}
+
+.profileIconButton:hover {
+  background: rgb(62, 56, 56);
+}
+
+.profileNameForm {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.profileEditHeader {
+  display: flex;
+  justify-content: flex-end;
+  margin: -2px 0 0;
+}
+
+.profileCloseButton {
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.profileCloseIcon {
+  display: block;
+  flex-shrink: 0;
+}
+
+.profileCloseButton:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.profileCloseButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.profilePage {
+  justify-content: flex-start;
+  padding-top: 56px;
+}
+
+.profileSection {
+  width: 100%;
+  max-width: 400px;
+  margin-top: 8px;
+  text-align: left;
+}
+
+.profileSection .form {
+  margin-top: 12px;
+}
+
+.profileSection .lobbyTitle {
+  margin-bottom: 4px;
+}
+
 @media (max-width: 480px) {
   .container {
     padding: 16px 12px;

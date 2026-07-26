@@ -32,6 +32,12 @@ export function setAuthSession({ token, user }) {
   sessionStorage.setItem(USER_KEY, JSON.stringify(user));
 }
 
+export function updateAuthUser(partial) {
+  const current = getAuthUser();
+  if (!current) return;
+  sessionStorage.setItem(USER_KEY, JSON.stringify({ ...current, ...partial }));
+}
+
 export function clearAuthSession() {
   sessionStorage.removeItem(TOKEN_KEY);
   sessionStorage.removeItem(USER_KEY);

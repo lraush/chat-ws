@@ -10,6 +10,7 @@ const AdminAddUser = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
+  const [role, setRole] = useState("user");
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -35,9 +36,6 @@ const AdminAddUser = () => {
         </header>
         <div className={`${styles.container} ${styles.centered}`}>
           <p className={styles.error}>Admin access only.</p>
-          <Link to="/lobby" className={styles.linkButton}>
-            Back to lobby
-          </Link>
         </div>
       </div>
     );
@@ -55,14 +53,22 @@ const AdminAddUser = () => {
         email,
         password,
         name: name.trim() || undefined,
+        isAdmin: role === "admin",
       });
       setSuccess("User created.");
       setEmail("");
       setPassword("");
       setName("");
+      setRole("user");
     } catch (err) {
       if (err?.message === "email_taken") {
         setError("This email is already registered.");
+      } else if (err?.message === "name_taken") {
+        setError("This display name is already taken.");
+      } else if (err?.message === "invalid_name") {
+        setError(
+          "Invalid name: 2–100 characters, letters, numbers, spaces, . _ -",
+        );
       } else if (err?.message === "forbidden") {
         setError("Admin access only.");
       } else if (err?.message === "network") {
@@ -82,7 +88,7 @@ const AdminAddUser = () => {
       <header className={styles.lobbyHeader}>
         <LobbyMenu />
       </header>
-      <div className={`${styles.container} ${styles.centered} ${styles.flatCorners}`}>
+      <div className={`${styles.container} ${styles.centered} ${styles.flatCorners} ${styles.profilePage}`}>
         <h1 className={styles.heading}>Add user</h1>
         <p className={styles.hint}>Create a chat account (email + password).</p>
 
@@ -123,14 +129,21 @@ const AdminAddUser = () => {
               onChange={(e) => setName(e.target.value)}
             />
           </label>
+          <label className={styles.group}>
+            <span className={styles.label}>Role</span>
+            <select
+              className={styles.input}
+              value={role}
+              onChange={(e) => setRole(e.target.value)}
+            >
+              <option value="user">User</option>
+              <option value="admin">Administrator</option>
+            </select>
+          </label>
           <button type="submit" className={styles.button} disabled={submitting}>
             {submitting ? "Creating…" : "Create user"}
           </button>
         </form>
-
-        <Link to="/lobby" className={styles.textButton}>
-          Back to lobby
-        </Link>
       </div>
     </div>
   );
