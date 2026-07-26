@@ -1,3 +1,12 @@
+:root {
+  --chat-surface: rgb(48, 43, 43);
+  --chat-surface-hover: rgb(62, 56, 56);
+  --chat-accent: #0d49d7;
+  --chat-border-muted: rgba(255, 255, 255, 0.35);
+  --chat-text: #fff;
+  --chat-panel: rgb(38, 34, 34);
+}
+
 body {
   background: rgb(99, 37, 169);
   font-size: 16px;

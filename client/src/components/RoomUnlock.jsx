@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import styles from "../styles/Main.module.css";
 import { getBackendConfigMessage, isBackendConfigured } from "../utils/backend";
 import { saveRoomSecretNumber } from "../utils/api";
 import LobbyMenu from "./LobbyMenu";
+import RequireAuth from "./RequireAuth";
 import { normalizeRotations } from "../utils/cipher";
-import { getUserName, isAuthenticated } from "../utils/auth";
+import { getUserName } from "../utils/auth";
 import { clearRoomCipherRotations, setRoomCipherRotations } from "../utils/roomCipher";
 import { normalizeRoomId } from "../utils/room";
 
@@ -24,29 +25,18 @@ const RoomUnlock = () => {
     }
   }, [roomId]);
 
-  if (!isAuthenticated()) {
-    return (
-      <div className={styles.wrap}>
-        <div className={`${styles.container} ${styles.centered}`}>
-          <p className={styles.hint}>Please sign in first.</p>
-          <Link to="/" className={styles.linkButton}>
-            Sign in
-          </Link>
-        </div>
-      </div>
-    );
-  }
-
   if (!roomId) {
     return (
-      <div className={styles.wrap}>
-        <header className={styles.lobbyHeader}>
-          <LobbyMenu />
-        </header>
-        <div className={`${styles.container} ${styles.centered}`}>
-          <p className={styles.error}>Invalid room.</p>
+      <RequireAuth>
+        <div className={styles.wrap}>
+          <header className={styles.lobbyHeader}>
+            <LobbyMenu />
+          </header>
+          <div className={`${styles.container} ${styles.centered}`}>
+            <p className={styles.error}>Invalid room.</p>
+          </div>
         </div>
-      </div>
+      </RequireAuth>
     );
   }
 
@@ -80,6 +70,7 @@ const RoomUnlock = () => {
   };
 
   return (
+    <RequireAuth>
     <div className={styles.wrap}>
       <header className={styles.lobbyHeader}>
         <LobbyMenu />
@@ -119,6 +110,7 @@ const RoomUnlock = () => {
         </form>
       </div>
     </div>
+    </RequireAuth>
   );
 };
 

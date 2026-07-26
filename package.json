@@ -1,4 +1,9 @@
 {
   "name": "chat-ws",
-  "private": true
+  "private": true,
+  "scripts": {
+    "test": "npm test --prefix server && CI=true npm test --prefix client -- --watchAll=false",
+    "test:server": "npm test --prefix server",
+    "test:client": "CI=true npm test --prefix client -- --watchAll=false"
+  }
 }

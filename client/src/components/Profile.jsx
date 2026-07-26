@@ -1,33 +1,16 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import styles from "../styles/Main.module.css";
 import LobbyMenu from "./LobbyMenu";
+import RequireAuth from "./RequireAuth";
 import { updateProfileName, updateProfilePassword } from "../utils/api";
-import { getAuthUser, isAdmin, isAuthenticated } from "../utils/auth";
+import { getAuthUser, isAdmin } from "../utils/auth";
 import {
   DISPLAY_NAME_MAX,
   sanitizeDisplayName,
   validateDisplayName,
 } from "../utils/displayName";
-
-function ProfileCloseIcon() {
-  return (
-    <svg
-      className={styles.profileCloseIcon}
-      viewBox="0 0 16 16"
-      width={14}
-      height={14}
-      aria-hidden="true"
-    >
-      <path
-        d="M4 4l8 8M12 4L4 12"
-        stroke="currentColor"
-        strokeWidth="1.75"
-        strokeLinecap="round"
-      />
-    </svg>
-  );
-}
+import { CloseIcon } from "./CloseIcon";
 
 const Profile = () => {
   const navigate = useNavigate();
@@ -47,19 +30,6 @@ const Profile = () => {
   const [savingName, setSavingName] = useState(false);
   const [savingPassword, setSavingPassword] = useState(false);
   const [passwordFormOpen, setPasswordFormOpen] = useState(false);
-
-  if (!isAuthenticated()) {
-    return (
-      <div className={styles.wrap}>
-        <div className={`${styles.container} ${styles.centered}`}>
-          <p className={styles.hint}>Please sign in first.</p>
-          <Link to="/" className={styles.linkButton}>
-            Sign in
-          </Link>
-        </div>
-      </div>
-    );
-  }
 
   const openNameEdit = () => {
     setNameError("");
@@ -171,7 +141,8 @@ const Profile = () => {
   };
 
   return (
-    <div className={styles.wrap}>
+    <RequireAuth>
+      <div className={styles.wrap}>
       <header className={styles.lobbyHeader}>
         <LobbyMenu />
       </header>
@@ -217,7 +188,7 @@ const Profile = () => {
                       onClick={handleCancelName}
                       disabled={savingName}
                     >
-                      <ProfileCloseIcon />
+                      <CloseIcon />
                     </button>
                   </div>
                   {nameError ? (
@@ -278,7 +249,7 @@ const Profile = () => {
                       onClick={handleCancelPassword}
                       disabled={savingPassword}
                     >
-                      <ProfileCloseIcon />
+                      <CloseIcon />
                     </button>
                   </div>
                   {passwordError ? (
@@ -340,6 +311,7 @@ const Profile = () => {
         </dl>
       </div>
     </div>
+    </RequireAuth>
   );
 };
 

@@ -200,3 +200,29 @@ export async function updateProfilePassword(currentPassword, newPassword) {
   }
   return res.json();
 }
+
+export async function spellCheckText(text, language = "ru-RU") {
+  let res;
+  try {
+    res = await authFetch("/api/spellcheck", {
+      method: "POST",
+      body: JSON.stringify({ text, language }),
+    });
+  } catch (err) {
+    if (err?.message === "unauthorized") throw err;
+    throw new Error("network");
+  }
+  if (res.status === 429) {
+    throw new Error("rate_limit");
+  }
+  if (res.status === 400) {
+    throw new Error("invalid_request");
+  }
+  if (res.status === 502) {
+    throw new Error("service_unavailable");
+  }
+  if (!res.ok) {
+    throw new Error("spellcheck_failed");
+  }
+  return res.json();
+}

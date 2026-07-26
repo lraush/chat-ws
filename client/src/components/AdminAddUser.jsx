@@ -1,9 +1,10 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import styles from "../styles/Main.module.css";
 import { adminCreateUser } from "../utils/api";
-import { isAdmin, isAuthenticated } from "../utils/auth";
+import { isAdmin } from "../utils/auth";
 import LobbyMenu from "./LobbyMenu";
+import RequireAuth from "./RequireAuth";
 
 const AdminAddUser = () => {
   const navigate = useNavigate();
@@ -14,32 +15,6 @@ const AdminAddUser = () => {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [submitting, setSubmitting] = useState(false);
-
-  if (!isAuthenticated()) {
-    return (
-      <div className={styles.wrap}>
-        <div className={`${styles.container} ${styles.centered}`}>
-          <p className={styles.hint}>Please sign in first.</p>
-          <Link to="/" className={styles.linkButton}>
-            Sign in
-          </Link>
-        </div>
-      </div>
-    );
-  }
-
-  if (!isAdmin()) {
-    return (
-      <div className={styles.wrap}>
-        <header className={styles.lobbyHeader}>
-          <LobbyMenu />
-        </header>
-        <div className={`${styles.container} ${styles.centered}`}>
-          <p className={styles.error}>Admin access only.</p>
-        </div>
-      </div>
-    );
-  }
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -84,6 +59,17 @@ const AdminAddUser = () => {
   };
 
   return (
+    <RequireAuth>
+      {!isAdmin() ? (
+        <div className={styles.wrap}>
+          <header className={styles.lobbyHeader}>
+            <LobbyMenu />
+          </header>
+          <div className={`${styles.container} ${styles.centered}`}>
+            <p className={styles.error}>Admin access only.</p>
+          </div>
+        </div>
+      ) : (
     <div className={styles.wrap}>
       <header className={styles.lobbyHeader}>
         <LobbyMenu />
@@ -146,6 +132,8 @@ const AdminAddUser = () => {
         </form>
       </div>
     </div>
+      )}
+    </RequireAuth>
   );
 };
 

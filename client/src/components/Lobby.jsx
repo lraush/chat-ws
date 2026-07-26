@@ -1,15 +1,15 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import styles from "../styles/Main.module.css";
 import { createRoom, fetchRoom } from "../utils/api";
 import {
   getUserName,
-  isAuthenticated,
 } from "../utils/auth";
 import { getBackendConfigMessage, isBackendConfigured } from "../utils/backend";
 import { buildInviteUrl, parseRoomIdFromInvite } from "../utils/room";
 import { clearRoomCipherRotations } from "../utils/roomCipher";
 import LobbyMenu from "./LobbyMenu";
+import RequireAuth from "./RequireAuth";
 
 function lobbyErrorMessage(err, fallback) {
   if (err?.message === "config") return getBackendConfigMessage();
@@ -29,19 +29,6 @@ const Lobby = () => {
   const [pendingRoomId, setPendingRoomId] = useState(null);
   const [inviteUrl, setInviteUrl] = useState("");
   const [copied, setCopied] = useState(false);
-
-  if (!isAuthenticated()) {
-    return (
-      <div className={styles.wrap}>
-        <div className={`${styles.container} ${styles.centered}`}>
-          <p className={styles.hint}>Please sign in first.</p>
-          <Link to="/" className={styles.linkButton}>
-            Sign in
-          </Link>
-        </div>
-      </div>
-    );
-  }
 
   const handleCreateRoom = async () => {
     if (creating) return;
@@ -116,6 +103,7 @@ const Lobby = () => {
   };
 
   return (
+    <RequireAuth>
     <div className={styles.wrap}>
       <header className={styles.lobbyHeader}>
         <LobbyMenu />
@@ -194,6 +182,7 @@ const Lobby = () => {
         </div>
       </div>
     </div>
+    </RequireAuth>
   );
 };
 
