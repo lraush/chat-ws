@@ -4,6 +4,13 @@
   "scripts": {
     "test": "npm test --prefix server && CI=true npm test --prefix client -- --watchAll=false",
     "test:server": "npm test --prefix server",
-    "test:client": "CI=true npm test --prefix client -- --watchAll=false"
+    "test:client": "CI=true npm test --prefix client -- --watchAll=false",
+    "db:up": "docker compose up -d",
+    "db:down": "docker compose down",
+    "db:logs": "docker compose logs -f mysql",
+    "dev:server": "npm run dev --prefix server",
+    "dev:client": "npm start --prefix client",
+    "tunnel": "ngrok start chat-ws-api --config ngrok.yml",
+    "tunnel:local": "ngrok start chat-ws-api --config ngrok.yml,ngrok.local.yml"
   }
 }

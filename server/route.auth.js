@@ -7,10 +7,11 @@ const {
   changeUserPassword,
 } = require("./services/auth.services");
 const { requireAuth, requireAdmin } = require("./middleware/auth.middleware");
+const { loginRateLimit } = require("./middleware/loginRateLimit");
 
 const router = express.Router();
 
-router.post("/api/auth/login", async (req, res) => {
+router.post("/api/auth/login", loginRateLimit, async (req, res) => {
   try {
     const email = req.body?.email;
     const password = req.body?.password;

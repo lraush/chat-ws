@@ -7,6 +7,22 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum RoomKind {
+  GROUP
+  DIRECT
+}
+
+enum FriendshipStatus {
+  PENDING
+  ACCEPTED
+}
+
+enum MessageKind {
+  TEXT
+  IMAGE
+  FILE
+}
+
 model User {
   id           String   @id @default(cuid())
   email        String   @unique
@@ -15,20 +31,63 @@ model User {
   isAdmin      Boolean  @default(false)
   createdAt    DateTime @default(now())
 
-  message Message[]
+  message                Message[]
+  sentFriendRequests     Friendship[] @relation("SentFriendRequests")
+  receivedFriendRequests Friendship[] @relation("ReceivedFriendRequests")
+  roomMemberships        RoomMember[]
+  createdRooms           Room[]       @relation("RoomCreator")
 }
 
 model Room {
   id           String   @id @default(cuid())
+  kind         RoomKind @default(GROUP)
+  slug         String?  @unique
   secretNumber Int?
   createdAt    DateTime @default(now())
+  createdById  String?
+
+  createdBy User?        @relation("RoomCreator", fields: [createdById], references: [id])
+  members   RoomMember[]
+}
+
+model RoomMember {
+  roomId   String
+  userId   String
+  joinedAt DateTime @default(now())
+
+  room Room @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([roomId, userId])
+  @@index([userId])
+}
+
+model Friendship {
+  id          String           @id @default(cuid())
+  requesterId String
+  addresseeId String
+  status      FriendshipStatus @default(PENDING)
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  requester User @relation("SentFriendRequests", fields: [requesterId], references: [id], onDelete: Cascade)
+  addressee User @relation("ReceivedFriendRequests", fields: [addresseeId], references: [id], onDelete: Cascade)
+
+  @@unique([requesterId, addresseeId])
+  @@index([addresseeId, status])
+  @@index([requesterId, status])
 }
 
 model Message {
-  id        String   @id @default(cuid())
-  content   String
-  room      String
-  createdAt DateTime @default(now())
+  id         String      @id @default(cuid())
+  content    String      @default("")
+  kind       MessageKind @default(TEXT)
+  fileName   String?
+  storedName String?
+  mimeType   String?
+  fileSize   Int?
+  room       String
+  createdAt  DateTime    @default(now())
 
   userId String
   user   User @relation(fields: [userId], references: [id])

@@ -36,6 +36,19 @@ describe("HTTP API smoke", () => {
     assert.equal(res.status, 400);
   });
 
+  test("GET /api/health returns ok or db down", async () => {
+    const res = await fetch(`${baseUrl}/api/health`);
+    const body = await res.json();
+    assert.equal(typeof body.ok, "boolean");
+    if (body.ok) {
+      assert.equal(res.status, 200);
+      assert.equal(body.db, "up");
+    } else {
+      assert.equal(res.status, 503);
+      assert.equal(body.db, "down");
+    }
+  });
+
   test("POST /api/spellcheck without token returns 401", async () => {
     const res = await fetch(`${baseUrl}/api/spellcheck`, {
       method: "POST",

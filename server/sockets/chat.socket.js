@@ -1,5 +1,8 @@
 const { createMessage, getMessages } = require("../services/message.services");
-const prisma = require("../db/prisma");
+const {
+  getRoomByIdentifier,
+  canAccessRoom,
+} = require("../services/room.services");
 
 function chatSocket(io, socket) {
   console.log("user connected: ", socket.id, socket.user?.email);
@@ -17,13 +20,17 @@ function chatSocket(io, socket) {
         return;
       }
 
-      const roomId = room.trim();
-      const roomRecord = await prisma.room.findUnique({
-        where: { id: roomId },
-      });
+      const roomKey = room.trim();
+      const roomRecord = await getRoomByIdentifier(roomKey);
 
       if (!roomRecord) {
         ack?.({ error: "room not found" });
+        return;
+      }
+
+      const allowed = await canAccessRoom(roomRecord, user.id);
+      if (!allowed) {
+        ack?.({ error: "forbidden" });
         return;
       }
 
@@ -33,7 +40,7 @@ function chatSocket(io, socket) {
         }
       }
 
-      socket.room = roomId;
+      socket.room = roomRecord.id;
       socket.join(socket.room);
 
       const messages = await getMessages(socket.room);
